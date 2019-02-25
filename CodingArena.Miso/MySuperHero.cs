@@ -11,7 +11,7 @@ namespace CodingArena.Miso
     {
         public string BotName => "Miso";
         private const int batteryLowPercentage = 10;
-        private const int shieldDamagedPercentage = 1;
+        private const int shieldDamagedPercentage = 1; 
 
         public ITurnAction GetTurnAction(IOwnBot ownBot, IReadOnlyCollection<IEnemy> enemies, IBattlefieldView battlefield)
         {            
