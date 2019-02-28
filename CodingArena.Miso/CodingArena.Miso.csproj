@@ -31,8 +31,8 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="CodingArena.Player, Version=1.0.7.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\CodingArena.Player.1.0.7\lib\net461\CodingArena.Player.dll</HintPath>
+    <Reference Include="CodingArena.Player, Version=1.0.8.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\CodingArena.Player.1.0.8\lib\net461\CodingArena.Player.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

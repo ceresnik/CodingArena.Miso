@@ -10,24 +10,32 @@ namespace CodingArena.Miso
     public class MySuperHero : IBotAI
     {
         public string BotName => "Miso";
-        private const int batteryLowPercentage = 10;
-        private const int shieldDamagedPercentage = 1; 
+        private const int batteryLowPercentage = 20;
+        private const int shieldDamagedPercentage = 10;
+        private int myLastShieldPercent = 100;
+        private int myLastHealthPercent = 100;
 
         public ITurnAction GetTurnAction(IOwnBot ownBot, IReadOnlyCollection<IEnemy> enemies, IBattlefieldView battlefield)
         {            
             ITurnAction turnAction;
-            if (IsLowBattery(ownBot, batteryLowPercentage))
+            if (IsBatteryLow(ownBot, batteryLowPercentage))
             {
+                UpdateCurrentShieldAndHealth(ownBot);
                 return RechargeTheBattery();
             }
-            if (IsShieldTooDamaged(ownBot, shieldDamagedPercentage) && HaveEnoughEnergy(ownBot))
+            if (IsShieldTooDamaged(ownBot, shieldDamagedPercentage))
             {
-                return RechargeTheShieldToMaximum(ownBot);
+                turnAction = HaveEnoughEnergyForFullShield(ownBot) ? RechargeTheShieldToMaximum(ownBot) : RechargeTheBattery();
+                UpdateCurrentShieldAndHealth(ownBot);
+                return turnAction;
             }
             var closestEnemy = FindClosestEnemy(ownBot, enemies);
-            if (IsUnderAttack(ownBot) && IsNotInCornerOrEdge(battlefield, ownBot) && IsInjured(ownBot))
+            if (IsUnderAttack(ownBot) 
+                && IsNotInCornerOrEdge(battlefield, ownBot) 
+                && (IsSeriouslyInjured(ownBot) || IsShieldSeriouslyDamaged(ownBot)))
             {
-                return MoveAwayFromEnemy(ownBot, closestEnemy);
+                UpdateCurrentShieldAndHealth(ownBot);
+                return RunAwayFromEnemy(closestEnemy);
             }
             if (IsCloseEnoughForAttackTheEnemy(ownBot, closestEnemy))
             {
@@ -35,12 +43,19 @@ namespace CodingArena.Miso
             }
             else
             {
-                turnAction = MoveCloserToEnemy(ownBot, closestEnemy);
+                turnAction = MoveCloserToEnemy(closestEnemy);
             }
+            UpdateCurrentShieldAndHealth(ownBot);
             return turnAction;
         }
 
-        private static bool IsLowBattery(IOwnBot ownBot, int batteryThreshold)
+        private void UpdateCurrentShieldAndHealth(IOwnBot ownBot)
+        {
+            myLastShieldPercent = ownBot.Shield.Percent;
+            myLastHealthPercent = ownBot.Health.Percent;
+        }
+
+        private static bool IsBatteryLow(IOwnBot ownBot, int batteryThreshold)
         {
             return ownBot.Energy.Percent < batteryThreshold;
         }
@@ -55,7 +70,7 @@ namespace CodingArena.Miso
             return ownBot.Shield.Percent < shieldDamagedThreshold;
         }
 
-        private bool HaveEnoughEnergy(IOwnBot ownBot)
+        private bool HaveEnoughEnergyForFullShield(IOwnBot ownBot)
         {
             int amountToMaxShieldPoints = ownBot.Shield.Maximum - ownBot.Shield.Actual;
             int energyLeftAfterRecharge = ownBot.Energy.Actual - amountToMaxShieldPoints;
@@ -86,7 +101,9 @@ namespace CodingArena.Miso
 
         private bool IsUnderAttack(IOwnBot ownBot)
         {
-            return ownBot.Shield.Percent < 10;
+            bool isHealthDecreasing = ownBot.Health.Percent < myLastHealthPercent;
+            bool isShieldDecreasing = ownBot.Shield.Percent < myLastShieldPercent;
+            return isHealthDecreasing || isShieldDecreasing;
         }
 
         private bool IsNotInCornerOrEdge(IBattlefieldView battlefield, IOwnBot ownBot)
@@ -99,30 +116,19 @@ namespace CodingArena.Miso
                    && battlefield.IsOutOfRange(ownBotPositionX, ownBotPositionY - 1) == false;
         }
 
-        private bool IsInjured(IOwnBot ownBot)
+        private bool IsShieldSeriouslyDamaged(IOwnBot ownBot)
+        {
+            return ownBot.Shield.Percent < 10;
+        }
+
+        private bool IsSeriouslyInjured(IOwnBot ownBot)
         {
             return ownBot.Health.Percent < 30;
         }
 
-        private ITurnAction MoveAwayFromEnemy(IOwnBot ownBot, IEnemy enemy)
+        private ITurnAction RunAwayFromEnemy(IEnemy enemy)
         {
-            if (ownBot.Position.X > enemy.Position.X)
-            {
-                return TurnAction.Move.East();
-            }
-            if (ownBot.Position.X < enemy.Position.X)
-            {
-                return TurnAction.Move.West();
-            }
-            if (ownBot.Position.Y > enemy.Position.Y)
-            {
-                return TurnAction.Move.North();
-            }
-            if (ownBot.Position.Y < enemy.Position.Y)
-            {
-                return TurnAction.Move.South();
-            }
-            return TurnAction.Move.East();
+            return TurnAction.Move.AwayFrom(enemy.Position);
         }
 
         private static ITurnAction Attack(IEnemy closestEnemy)
@@ -135,9 +141,9 @@ namespace CodingArena.Miso
             return ownBot.DistanceTo(enemy) <= 4;
         }
 
-        private static ITurnAction MoveCloserToEnemy(IOwnBot ownBot, IEnemy closestEnemy)
+        private static ITurnAction MoveCloserToEnemy(IEnemy enemy)
         {
-            return TurnAction.Move.Towards(ownBot.Position, closestEnemy.Position);
+            return TurnAction.Move.Towards(enemy.Position);
         }
     }
 }
