@@ -57,13 +57,23 @@ namespace CodingArena.Miso.Tests
         {
             //prepare
             Mock.Get(mOwnBot).Setup(x => x.DistanceTo(mEnemy)).Returns(5);
-
             //act
             var result = sut.GetTurnAction(mOwnBot, enemiesCollection, mBattleField);
-
             //verify
             Assert.That(result, Is.InstanceOf(TurnAction.Move.Towards(new Mock<IBattlefieldPlace>().Object).GetType()),
                 "When the distance to the enemy is 5, Move Towards action must be returned.");
+        }
+
+        [Test]
+        public void WhenClosestEnemyDistanceIs4_MyBotAttacks()
+        {
+            //prepare
+            Mock.Get(mOwnBot).Setup(x => x.DistanceTo(mEnemy)).Returns(4);
+            //act
+            var result = sut.GetTurnAction(mOwnBot, enemiesCollection, mBattleField);
+            //verify
+            Assert.That(result, Is.InstanceOf(TurnAction.Attack(mEnemy).GetType()),
+                "When the distance to the enemy is 4, Attack action must be returned.");
         }
 
         private static IOwnBot CreateAndSetupOwnBot()
