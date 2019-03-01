@@ -15,6 +15,9 @@ namespace CodingArena.Miso.Tests
         private IEnemy mEnemy;
         private IBattlefieldView mBattleField;
         private IReadOnlyCollection<IEnemy> enemiesCollection;
+        private static IShield mShield;
+        private const int MaximumEnergy = 500;
+        private const int MaximumShield = 200;
 
         [SetUp]
         public void SetUp()
@@ -26,18 +29,12 @@ namespace CodingArena.Miso.Tests
             enemiesCollection = new List<IEnemy> {mEnemy};
         }
 
-        private static IEnergy CreateAndSetupEnergyMock()
-        {
-            var mEnergy = new Mock<IEnergy>().Object;
-            Mock.Get(mEnergy).Setup(x => x.Percent).Returns(100);
-            return mEnergy;
-        }
-
         [TearDown]
         public void TearDown()
         {
             mOwnBot = null;
             mEnemy = null;
+            mShield = null;
             mBattleField = null;
             enemiesCollection = null;
             sut = null;
@@ -76,6 +73,65 @@ namespace CodingArena.Miso.Tests
                 "When the distance to the enemy is 4, Attack action must be returned.");
         }
 
+        [Test]
+        public void WhenBatteryIsLow_RechargeTheBattery()
+        {
+            int batteryLowPercentage = 19;
+            SetBatteryPercentage(mOwnBot, batteryLowPercentage);
+            //act
+            var result = sut.GetTurnAction(mOwnBot, enemiesCollection, mBattleField);
+            //verify
+            Assert.That(result, Is.InstanceOf(TurnAction.Recharge.Battery().GetType()),
+                $"When battery percentage is as low as {batteryLowPercentage}, Recharge battery action must be returned.");
+        }
+
+        [Test]
+        public void WhenBatteryIsNotLow_BatteryIsNotRecharged()
+        {
+            int batteryLowPercentage = 20;
+            SetBatteryPercentage(mOwnBot, batteryLowPercentage);
+            //act
+            var result = sut.GetTurnAction(mOwnBot, enemiesCollection, mBattleField);
+            //verify
+            Assert.That(result, Is.Not.InstanceOf(TurnAction.Recharge.Battery().GetType()),
+                $"When battery percentage is as high as {batteryLowPercentage}, Recharge battery action must not be returned.");
+        }
+
+        [Test]
+        public void WhenShieldIsTooDamaged_RechargeTheShield()
+        {
+            int shieldLowPercentage = 9;
+            SetShieldPercentage(mOwnBot, shieldLowPercentage);
+            //act
+            var result = sut.GetTurnAction(mOwnBot, enemiesCollection, mBattleField);
+            //verify
+            Assert.That(result, Is.InstanceOf(TurnAction.Recharge.Shield(It.IsAny<int>()).GetType()),
+                $"When shield percentage is as low as {shieldLowPercentage}, Recharge shield action must be returned.");
+        }
+
+        private static IEnergy CreateAndSetupEnergyMock()
+        {
+            var mEnergy = new Mock<IEnergy>().Object;
+            Mock.Get(mEnergy).Setup(x => x.Percent).Returns(100);
+            Mock.Get(mEnergy).Setup(x => x.Maximum).Returns(MaximumEnergy);
+            Mock.Get(mEnergy).Setup(x => x.Actual).Returns(MaximumEnergy);
+            return mEnergy;
+        }
+
+        private void SetShieldPercentage(IOwnBot ownBot, int shieldPercentage)
+        {
+            Mock.Get(mShield).Setup(x => x.Percent).Returns(shieldPercentage);
+            Mock.Get(mShield).Setup(x => x.Actual).Returns(MaximumShield * shieldPercentage / 100);
+            Mock.Get(ownBot).Setup(x => x.Shield).Returns(mShield);
+        }
+
+        private void SetBatteryPercentage(IOwnBot ownBot, int batteryPercentage)
+        {
+            var mEnergy = new Mock<IEnergy>().Object;
+            Mock.Get(mEnergy).Setup(x => x.Percent).Returns(batteryPercentage);
+            Mock.Get(ownBot).Setup(x => x.Energy).Returns(mEnergy);
+        }
+
         private static IOwnBot CreateAndSetupOwnBot()
         {
             var ownBot = new Mock<IOwnBot>().Object;
@@ -87,8 +143,10 @@ namespace CodingArena.Miso.Tests
 
         private static IShield CreateAndSetupShieldMock()
         {
-            var mShield = new Mock<IShield>().Object;
+            mShield = new Mock<IShield>().Object;
             Mock.Get(mShield).Setup(x => x.Percent).Returns(100);
+            Mock.Get(mShield).Setup(x => x.Maximum).Returns(MaximumShield);
+            Mock.Get(mShield).Setup(x => x.Actual).Returns(MaximumShield);
             return mShield;
         }
 
