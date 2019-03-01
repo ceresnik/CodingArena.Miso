@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
-using CodingArena.Player;
+﻿using CodingArena.Player;
 using CodingArena.Player.Battlefield;
 using CodingArena.Player.TurnActions;
 using Moq;
 using NUnit.Framework;
+using System.Collections.Generic;
 
 namespace CodingArena.Miso.Tests
 {
@@ -12,7 +12,7 @@ namespace CodingArena.Miso.Tests
     {
         private MySuperHero sut;
         private IOwnBot mOwnBot;
-        private IEnemy enemyMock;
+        private IEnemy mEnemy;
         private IBattlefieldView mBattleField;
         private IReadOnlyCollection<IEnemy> enemiesCollection;
 
@@ -21,9 +21,49 @@ namespace CodingArena.Miso.Tests
         {
             sut = new MySuperHero();
             mOwnBot = CreateAndSetupOwnBot();
-            enemyMock = new Mock<IEnemy>().Object;
+            mEnemy = CreateAndSetupEnemy(0, 5);
             mBattleField = new Mock<IBattlefieldView>().Object;
-            enemiesCollection = new List<IEnemy> {enemyMock};
+            enemiesCollection = new List<IEnemy> {mEnemy};
+        }
+
+        private static IEnergy CreateAndSetupEnergyMock()
+        {
+            var mEnergy = new Mock<IEnergy>().Object;
+            Mock.Get(mEnergy).Setup(x => x.Percent).Returns(100);
+            return mEnergy;
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            mOwnBot = null;
+            mEnemy = null;
+            mBattleField = null;
+            enemiesCollection = null;
+            sut = null;
+        }
+
+        [Test]
+        public void ReturnsTurnActionObject()
+        {
+            //act
+            var result = sut.GetTurnAction(mOwnBot, enemiesCollection, mBattleField);
+            //verify
+            Assert.That(result, Is.Not.Null, "Calling the GetTurnAction() method must return not null object.");
+        }
+
+        [Test]
+        public void WhenClosestEnemyDistanceIs5_MyBotMoves()
+        {
+            //prepare
+            Mock.Get(mOwnBot).Setup(x => x.DistanceTo(mEnemy)).Returns(5);
+
+            //act
+            var result = sut.GetTurnAction(mOwnBot, enemiesCollection, mBattleField);
+
+            //verify
+            Assert.That(result, Is.InstanceOf(TurnAction.Move.Towards(new Mock<IBattlefieldPlace>().Object).GetType()),
+                "When the distance to the enemy is 5, Move Towards action must be returned.");
         }
 
         private static IOwnBot CreateAndSetupOwnBot()
@@ -49,54 +89,12 @@ namespace CodingArena.Miso.Tests
             return mHealth;
         }
 
-        private static IEnergy CreateAndSetupEnergyMock()
+        private IEnemy CreateAndSetupEnemy(int xPosition, int yPosition)
         {
-            var mEnergy = new Mock<IEnergy>().Object;
-            Mock.Get(mEnergy).Setup(x => x.Percent).Returns(100);
-            return mEnergy;
-        }
-
-        [TearDown]
-        public void TearDown()
-        {
-            mOwnBot = null;
-            enemyMock = null;
-            mBattleField = null;
-            enemiesCollection = null;
-            sut = null;
-        }
-
-        [Test]
-        public void ReturnsTurnActionObject()
-        {
-            //act
-            var result = sut.GetTurnAction(mOwnBot, enemiesCollection, mBattleField);
-            //verify
-            Assert.That(result, Is.Not.Null, "Calling the GetTurnAction() method must return not null object.");
-        }
-
-        [Test]
-        public void WhenNoEnemy_ReturnsIdle()
-        {
-            var result = sut.GetTurnAction(mOwnBot, new List<IEnemy>(), mBattleField);
-            Assert.IsInstanceOf(TurnAction.Idle().GetType(), result, 
-                "When the list of enemies is empty, Idle action must be returned.");
-        }
-
-        [Test]
-        public void WhenEnemysDistanceIsMoreThan9_MyBotMoves()
-        {
-            var battlefieldPlaceOfOwnBot = new Mock<IBattlefieldPlace>().Object;
-            Mock.Get(battlefieldPlaceOfOwnBot).Setup(x => x.X).Returns(0);
-            Mock.Get(battlefieldPlaceOfOwnBot).Setup(x => x.Y).Returns(0);
-            Mock.Get(mBattleField).Setup(x => x[mOwnBot]).Returns(battlefieldPlaceOfOwnBot);
-            var battlefieldPlaceOfEnemyBot = new Mock<IBattlefieldPlace>().Object;
-            Mock.Get(battlefieldPlaceOfEnemyBot).Setup(x => x.X).Returns(10);
-            Mock.Get(battlefieldPlaceOfEnemyBot).Setup(x => x.Y).Returns(0);
-            Mock.Get(mBattleField).Setup(x => x[enemyMock]).Returns(battlefieldPlaceOfEnemyBot);
-            var result = sut.GetTurnAction(mOwnBot, enemiesCollection, mBattleField);
-            Assert.IsInstanceOf(TurnAction.Move.Towards(battlefieldPlaceOfEnemyBot).GetType(), result,
-                "When the distance to the enemy is 10, Move Towards action must be returned.");
+            var enemy = new Mock<IEnemy>().Object;
+            Mock.Get(enemy).Setup(a => a.Position.X).Returns(xPosition);
+            Mock.Get(enemy).Setup(a => a.Position.Y).Returns(yPosition);
+            return enemy;
         }
     }
 }
