@@ -10,8 +10,8 @@ namespace CodingArena.Miso
     public class MySuperHero : IBotAI
     {
         public string BotName => "Miso";
-        private const int batteryLowPercentage = 20;
-        private const int shieldDamagedPercentage = 10;
+        private const int BatteryLowPercentage = 20;
+        private const int ShieldDamagedPercentage = 10;
         private int myLastShieldPercent = 100;
         private int myLastHealthPercent = 100;
         private int batteryNotFullPercentage = 90;
@@ -20,7 +20,7 @@ namespace CodingArena.Miso
         public ITurnAction GetTurnAction(IOwnBot ownBot, IReadOnlyCollection<IEnemy> enemies, IBattlefieldView battlefield)
         {            
             ITurnAction turnAction;
-            if (IsBatteryLow(ownBot, batteryLowPercentage))
+            if (IsBatteryLow(ownBot, BatteryLowPercentage))
             {
                 UpdateCurrentShieldAndHealth(ownBot);
                 return RechargeTheBattery();
@@ -35,7 +35,7 @@ namespace CodingArena.Miso
             //    UpdateCurrentShieldAndHealth(ownBot);
             //    return RechargeTheShieldToMaximum(ownBot);
             //}
-            if (IsShieldTooDamaged(ownBot, shieldDamagedPercentage))
+            if (IsShieldTooDamaged(ownBot, ShieldDamagedPercentage))
             {
                 turnAction = HaveEnoughEnergyForFullShield(ownBot) ? RechargeTheShieldToMaximum(ownBot) : RechargeTheBattery();
                 UpdateCurrentShieldAndHealth(ownBot);
@@ -101,7 +101,7 @@ namespace CodingArena.Miso
         {
             int amountToMaxShieldPoints = ownBot.Shield.Maximum - ownBot.Shield.Actual;
             int energyLeftAfterRecharge = ownBot.Energy.Actual - amountToMaxShieldPoints;
-            return energyLeftAfterRecharge > batteryLowPercentage;
+            return energyLeftAfterRecharge > BatteryLowPercentage;
         }
 
         private static ITurnAction RechargeTheShieldToMaximum(IOwnBot ownBot)
