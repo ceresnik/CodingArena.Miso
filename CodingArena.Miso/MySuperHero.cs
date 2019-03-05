@@ -18,7 +18,8 @@ namespace CodingArena.Miso
         private int shieldNotFullPercentage = 90;
 
         public ITurnAction GetTurnAction(IOwnBot ownBot, IReadOnlyCollection<IEnemy> enemies, IBattlefieldView battlefield)
-        {            
+        {
+            //TODO: recharge the Shield (do not die with lot of energy)
             ITurnAction turnAction;
             if (IsBatteryLow(ownBot, BatteryLowPercentage))
             {

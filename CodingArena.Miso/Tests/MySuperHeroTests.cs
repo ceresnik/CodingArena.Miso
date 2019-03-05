@@ -12,7 +12,8 @@ namespace CodingArena.Miso.Tests
     {
         private MySuperHero sut;
         private IOwnBot myOwnBot;
-        private IEnemy myEnemy;
+        private IEnemy myEnemyOne;
+        private IEnemy myEnemyTwo;
         private IBattlefieldView myBattleField;
         private static IShield myShield;
         private IReadOnlyCollection<IEnemy> enemiesCollection;
@@ -28,16 +29,17 @@ namespace CodingArena.Miso.Tests
             sut = new MySuperHero();
             myShield = CreateAndSetupShield();
             myOwnBot = CreateAndSetupOwnBot(myShield);
-            myEnemy = CreateAndSetupEnemy(0, 5);
+            myEnemyOne = CreateAndSetupEnemy(0, 5);
+            myEnemyTwo = CreateAndSetupEnemy(45, 45);
             myBattleField = new Mock<IBattlefieldView>().Object;
-            enemiesCollection = new List<IEnemy> {myEnemy};
+            enemiesCollection = new List<IEnemy> {myEnemyOne};
         }
 
         [TearDown]
         public void TearDown()
         {
             myOwnBot = null;
-            myEnemy = null;
+            myEnemyOne = null;
             myShield = null;
             myBattleField = null;
             enemiesCollection = null;
@@ -57,7 +59,7 @@ namespace CodingArena.Miso.Tests
         public void WhenClosestEnemyDistanceIs5_MyBotMoves()
         {
             //prepare
-            Mock.Get(myOwnBot).Setup(x => x.DistanceTo(myEnemy)).Returns(5);
+            Mock.Get(myOwnBot).Setup(x => x.DistanceTo(myEnemyOne)).Returns(5);
             //act
             var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
             //verify
@@ -69,11 +71,11 @@ namespace CodingArena.Miso.Tests
         public void WhenClosestEnemyDistanceIs4_MyBotAttacks()
         {
             //prepare
-            Mock.Get(myOwnBot).Setup(x => x.DistanceTo(myEnemy)).Returns(4);
+            Mock.Get(myOwnBot).Setup(x => x.DistanceTo(myEnemyOne)).Returns(4);
             //act
             var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
             //verify
-            Assert.That(result, Is.InstanceOf(TurnAction.Attack(myEnemy).GetType()),
+            Assert.That(result, Is.InstanceOf(TurnAction.Attack(myEnemyOne).GetType()),
                 "When the distance to the enemy is 4, Attack action must be returned.");
         }
 
@@ -108,9 +110,10 @@ namespace CodingArena.Miso.Tests
             //act
             var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
             //verify
-            int shieldPointsToMax = MaximumShield - actualShieldPoints;
-            Assert.That(result, Is.InstanceOf(TurnAction.Recharge.Shield(shieldPointsToMax).GetType()),
+            //int shieldPointsToMax = MaximumShield - actualShieldPoints;
+            Assert.That(result, Is.InstanceOf(TurnAction.Recharge.Shield(It.IsAny<int>()).GetType()),
                 $"When shield percentage is as low as {ShieldTooDamagedPercentage}, Recharge shield action must be returned.");
+            //TODO: how to check how many shield points were recharged?
         }
 
         [Test]
@@ -124,6 +127,18 @@ namespace CodingArena.Miso.Tests
             Assert.That(result, Is.InstanceOf(TurnAction.Recharge.Battery().GetType()),
                 $"When shield percentage is as low as {ShieldTooDamagedPercentage} and battery as low as {BatteryLowPercentage}, " +
                 "Recharge battery action must be returned.");
+        }
+
+        //[Test]
+        //public void TwoEnemies_AttackTheCloserOne()
+        //{
+        //    enemiesCollection.
+        //}
+
+        [Test]
+        public void WhenNobodyIsCloseAndShieldIsLow_RechargeTheShield()
+        {
+            Mock.Get(myOwnBot).Setup(x => x.DistanceTo(myEnemyOne)).Returns(30);
         }
 
         private void SetBatteryPercentage(IOwnBot ownBot, int batteryPercentage)
