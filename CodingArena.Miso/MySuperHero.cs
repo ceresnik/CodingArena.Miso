@@ -15,8 +15,9 @@ namespace CodingArena.Miso
         private const int ShieldDamagedPercentage = 10;
         private int myLastShieldPercent = 100;
         private int myLastHealthPercent = 100;
-        private int batteryNotFullPercentage = 100;
+        private int batteryNotFullPercentage = 95;
         private IEnemy myClosestEnemy;
+        private int shieldNotFullPercentage = 99;
         private const int SafeDistanceFromEnemy = 5;
 
         public ITurnAction GetTurnAction(IOwnBot ownBot, IReadOnlyCollection<IEnemy> enemies, IBattlefieldView battlefield)
@@ -32,10 +33,18 @@ namespace CodingArena.Miso
                 UpdateCurrentShieldAndHealth(ownBot);
                 return RechargeTheBattery();
             }
-            if (IsInSafeDistanceFromEnemies(SafeDistanceFromEnemy) && BatteryNotFullEnough(ownBot, batteryNotFullPercentage))
+            if (IsInSafeDistanceFromEnemies(SafeDistanceFromEnemy))
             {
-                UpdateCurrentShieldAndHealth(ownBot);
-                return RechargeTheBattery();
+                if (ShieldNotFullEnough(ownBot, shieldNotFullPercentage))
+                {
+                    UpdateCurrentShieldAndHealth(ownBot);
+                    return RechargeTheShieldToMaximum(ownBot);
+                }
+                if (BatteryNotFullEnough(ownBot, batteryNotFullPercentage))
+                {
+                    UpdateCurrentShieldAndHealth(ownBot);
+                    return RechargeTheBattery();
+                }
             }
             if (IsShieldTooDamaged(ownBot, ShieldDamagedPercentage))
             {
@@ -69,6 +78,11 @@ namespace CodingArena.Miso
         private bool NotUnderAttack(IOwnBot ownBot)
         {
             return IsUnderAttack(ownBot) == false;
+        }
+
+        private bool ShieldNotFullEnough(IOwnBot ownBot, int shieldThreshold)
+        {
+            return ownBot.Shield.Percent < shieldThreshold;
         }
 
         private bool BatteryNotFullEnough(IOwnBot ownBot, int batteryThreshold)

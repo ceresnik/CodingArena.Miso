@@ -13,11 +13,14 @@ namespace CodingArena.Miso.Tests
         private MySuperHero sut;
         private IOwnBot myOwnBot;
         private IEnemy myEnemyOne;
-        private IEnemy myEnemyTwo;
         private IBattlefieldView myBattleField;
         private static IShield myShield;
+        private static IHealth myHealth;
+        private static IEnergy myEnergy;
+        private static IBattlefieldPlace myPosition;
         private IReadOnlyCollection<IEnemy> enemiesCollection;
         private const int ShieldTooDamagedPercentage = 9;
+        private const int ShieldNotOkPercentage = 90;
         private const int BatteryLowPercentage = 19;
         private const int BatteryOkPercentage = 20;
         private const int MaximumEnergy = 500;
@@ -28,9 +31,12 @@ namespace CodingArena.Miso.Tests
         {
             sut = new MySuperHero();
             myShield = CreateAndSetupShield();
-            myOwnBot = CreateAndSetupOwnBot(myShield);
+            myHealth = CreateAndSetupHealth();
+            myEnergy = CreateAndSetupEnergy();
+            myPosition = CreateAndSetupPosition();
+            myOwnBot = CreateAndSetupOwnBot();
             myEnemyOne = CreateAndSetupEnemy(0, 5);
-            myEnemyTwo = CreateAndSetupEnemy(45, 45);
+            CreateAndSetupEnemy(45, 45);
             myBattleField = new Mock<IBattlefieldView>().Object;
             enemiesCollection = new List<IEnemy> {myEnemyOne};
         }
@@ -38,9 +44,12 @@ namespace CodingArena.Miso.Tests
         [TearDown]
         public void TearDown()
         {
+            myShield = null;
+            myHealth = null;
+            myEnergy = null;
+            myPosition = null;
             myOwnBot = null;
             myEnemyOne = null;
-            myShield = null;
             myBattleField = null;
             enemiesCollection = null;
             sut = null;
@@ -82,7 +91,7 @@ namespace CodingArena.Miso.Tests
         [Test]
         public void WhenBatteryIsLow_RechargeTheBattery()
         {
-            SetBatteryPercentage(myOwnBot, BatteryLowPercentage);
+            SetBatteryPercentageAndActualEnergyPoints(BatteryLowPercentage);
             //act
             var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
             //verify
@@ -93,7 +102,7 @@ namespace CodingArena.Miso.Tests
         [Test]
         public void WhenBatteryIsNotLow_BatteryIsNotRecharged()
         {
-            SetBatteryPercentage(myOwnBot, BatteryOkPercentage);
+            SetBatteryPercentageAndActualEnergyPoints(BatteryOkPercentage);
             //act
             var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
             //verify
@@ -118,7 +127,7 @@ namespace CodingArena.Miso.Tests
         public void WhenShieldIsTooDamagedAndNotEnoughBattery_RechargeTheBattery()
         {
             SetShieldPercentageAndActualShieldPoints(ShieldTooDamagedPercentage);
-            SetBatteryPercentage(myOwnBot, BatteryLowPercentage);
+            SetBatteryPercentageAndActualEnergyPoints(BatteryLowPercentage);
             //act
             var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
             //verify
@@ -128,31 +137,25 @@ namespace CodingArena.Miso.Tests
         }
 
         [Test]
-        public void WhenNobodyIsCloseAndShieldIsLow_RechargeTheShield()
+        public void WhenNobodyIsCloseAndShieldIsNotOk_RechargeTheShield()
         {
             Mock.Get(myOwnBot).Setup(x => x.DistanceTo(myEnemyOne)).Returns(30);
-            SetShieldPercentageAndActualShieldPoints(ShieldTooDamagedPercentage);
+            SetShieldPercentageAndActualShieldPoints(ShieldNotOkPercentage);
             //act
             var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
             //verify
             Assert.That(result, Is.InstanceOf(TurnAction.Recharge.Shield(It.IsAny<int>()).GetType()),
-                $"When nobody is close and shield percentage is as low as {ShieldTooDamagedPercentage}, " +
+                $"When nobody is close and shield percentage is as low as {ShieldNotOkPercentage}, " +
                 "Recharge Shield action must be returned.");
         }
 
-        private void SetBatteryPercentage(IOwnBot ownBot, int batteryPercentage)
-        {
-            var mEnergy = new Mock<IEnergy>().Object;
-            Mock.Get(mEnergy).Setup(x => x.Percent).Returns(batteryPercentage);
-            Mock.Get(ownBot).Setup(x => x.Energy).Returns(mEnergy);
-        }
-
-        private static IOwnBot CreateAndSetupOwnBot(IShield shield)
+        private static IOwnBot CreateAndSetupOwnBot()
         {
             var ownBot = new Mock<IOwnBot>().Object;
-            Mock.Get(ownBot).Setup(x => x.Health).Returns(CreateAndSetupHealth());
-            Mock.Get(ownBot).Setup(x => x.Shield).Returns(shield);
-            Mock.Get(ownBot).Setup(x => x.Energy).Returns(CreateAndSetupEnergy());
+            Mock.Get(ownBot).Setup(x => x.Health).Returns(myHealth);
+            Mock.Get(ownBot).Setup(x => x.Shield).Returns(myShield);
+            Mock.Get(ownBot).Setup(x => x.Energy).Returns(myEnergy);
+            Mock.Get(ownBot).Setup(x => x.Position).Returns(myPosition);
             return ownBot;
         }
 
@@ -172,10 +175,24 @@ namespace CodingArena.Miso.Tests
             return shield;
         }
 
+        private IBattlefieldPlace CreateAndSetupPosition()
+        {
+            var mPosition = new Mock<IBattlefieldPlace>().Object;
+            Mock.Get(mPosition).Setup(x => x.X).Returns(25);
+            Mock.Get(mPosition).Setup(x => x.Y).Returns(25);
+            return mPosition;
+        }
+
         private static void SetShieldPercentageAndActualShieldPoints(int shieldPercentage)
         {
             Mock.Get(myShield).Setup(x => x.Percent).Returns(shieldPercentage);
             Mock.Get(myShield).Setup(x => x.Actual).Returns(shieldPercentage * MaximumShield / 100);
+        }
+
+        private void SetBatteryPercentageAndActualEnergyPoints(int batteryPercentage)
+        {
+            Mock.Get(myEnergy).Setup(x => x.Percent).Returns(batteryPercentage);
+            Mock.Get(myEnergy).Setup(x => x.Actual).Returns(batteryPercentage * MaximumEnergy / 100);
         }
 
         private static IEnergy CreateAndSetupEnergy()
