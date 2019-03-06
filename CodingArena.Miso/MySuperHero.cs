@@ -10,56 +10,60 @@ namespace CodingArena.Miso
     public class MySuperHero : IBotAI
     {
         public string BotName => "Miso";
+        private IOwnBot myOwnBot;
         private const int BatteryLowPercentage = 20;
         private const int ShieldDamagedPercentage = 10;
         private int myLastShieldPercent = 100;
         private int myLastHealthPercent = 100;
-        private int batteryNotFullPercentage = 90;
-        private int shieldNotFullPercentage = 90;
+        private int batteryNotFullPercentage = 100;
+        private IEnemy myClosestEnemy;
+        private const int SafeDistanceFromEnemy = 5;
 
         public ITurnAction GetTurnAction(IOwnBot ownBot, IReadOnlyCollection<IEnemy> enemies, IBattlefieldView battlefield)
         {
-            //TODO: recharge the Shield (do not die with lot of energy)
+            if (myOwnBot == null)
+            {
+                myOwnBot = ownBot;
+            }
+            myClosestEnemy = FindClosestEnemy(ownBot, enemies);
             ITurnAction turnAction;
-            if (IsBatteryLow(ownBot, BatteryLowPercentage))
+            if (IsBatteryLow(ownBot, BatteryLowPercentage) && NotUnderAttack(ownBot))
             {
                 UpdateCurrentShieldAndHealth(ownBot);
                 return RechargeTheBattery();
             }
-            //if (NotUnderAttack(ownBot) && BatteryNotFullEnough(ownBot, batteryNotFullPercentage))
-            //{
-            //    UpdateCurrentShieldAndHealth(ownBot);
-            //    return RechargeTheBattery();
-            //}
-            //if (NotUnderAttack(ownBot) && ShieldNotFullEnough(ownBot, shieldNotFullPercentage))
-            //{
-            //    UpdateCurrentShieldAndHealth(ownBot);
-            //    return RechargeTheShieldToMaximum(ownBot);
-            //}
+            if (IsInSafeDistanceFromEnemies(SafeDistanceFromEnemy) && BatteryNotFullEnough(ownBot, batteryNotFullPercentage))
+            {
+                UpdateCurrentShieldAndHealth(ownBot);
+                return RechargeTheBattery();
+            }
             if (IsShieldTooDamaged(ownBot, ShieldDamagedPercentage))
             {
-                turnAction = HaveEnoughEnergyForFullShield(ownBot) ? RechargeTheShieldToMaximum(ownBot) : RechargeTheBattery();
                 UpdateCurrentShieldAndHealth(ownBot);
-                return turnAction;
+                return HaveEnoughEnergyForFullShield(ownBot) ? RechargeTheShieldToMaximum(ownBot) : RechargeTheBattery();
             }
-            var closestEnemy = FindClosestEnemy(ownBot, enemies);
             if (IsUnderAttack(ownBot) 
                 && IsNotInCornerOrEdge(battlefield, ownBot) 
                 && (IsSeriouslyInjured(ownBot) || IsShieldSeriouslyDamaged(ownBot)))
             {
                 UpdateCurrentShieldAndHealth(ownBot);
-                return RunAwayFromEnemy(closestEnemy);
+                return RunAwayFromEnemy(myClosestEnemy);
             }
-            if (IsCloseEnoughForAttackTheEnemy(ownBot, closestEnemy))
+            if (IsCloseEnoughForAttackTheEnemy(ownBot, myClosestEnemy))
             {
-                turnAction = Attack(closestEnemy);
+                turnAction = Attack(myClosestEnemy);
             }
             else
             {
-                turnAction = MoveCloserToEnemy(closestEnemy);
+                turnAction = MoveCloserToEnemy(myClosestEnemy);
             }
             UpdateCurrentShieldAndHealth(ownBot);
             return turnAction;
+        }
+
+        private bool IsInSafeDistanceFromEnemies(int distance)
+        {
+            return myOwnBot.DistanceTo(myClosestEnemy) > distance;
         }
 
         private bool NotUnderAttack(IOwnBot ownBot)
@@ -70,11 +74,6 @@ namespace CodingArena.Miso
         private bool BatteryNotFullEnough(IOwnBot ownBot, int batteryThreshold)
         {
             return ownBot.Energy.Percent < batteryThreshold;
-        }
-
-        private bool ShieldNotFullEnough(IOwnBot ownBot, int shieldNotFullThreshold)
-        {
-            return ownBot.Shield.Percent < shieldNotFullThreshold;
         }
 
         private void UpdateCurrentShieldAndHealth(IOwnBot ownBot)

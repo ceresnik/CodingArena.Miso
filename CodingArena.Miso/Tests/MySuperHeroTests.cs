@@ -104,22 +104,20 @@ namespace CodingArena.Miso.Tests
         [Test]
         public void WhenShieldIsTooDamaged_RechargeTheShieldToMax()
         {
-            SetShieldPercentage(myShield, ShieldTooDamagedPercentage);
-            const int actualShieldPoints = 100;
-            SetShieldActual(myShield, actualShieldPoints);
+            SetShieldPercentageAndActualShieldPoints(ShieldTooDamagedPercentage);
             //act
             var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
             //verify
-            //int shieldPointsToMax = MaximumShield - actualShieldPoints;
             Assert.That(result, Is.InstanceOf(TurnAction.Recharge.Shield(It.IsAny<int>()).GetType()),
                 $"When shield percentage is as low as {ShieldTooDamagedPercentage}, Recharge shield action must be returned.");
             //TODO: how to check how many shield points were recharged?
+            //int shieldPointsToMax = MaximumShield - actualShieldPoints;
         }
 
         [Test]
         public void WhenShieldIsTooDamagedAndNotEnoughBattery_RechargeTheBattery()
         {
-            SetShieldPercentage(myShield, ShieldTooDamagedPercentage);
+            SetShieldPercentageAndActualShieldPoints(ShieldTooDamagedPercentage);
             SetBatteryPercentage(myOwnBot, BatteryLowPercentage);
             //act
             var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
@@ -129,16 +127,17 @@ namespace CodingArena.Miso.Tests
                 "Recharge battery action must be returned.");
         }
 
-        //[Test]
-        //public void TwoEnemies_AttackTheCloserOne()
-        //{
-        //    enemiesCollection.
-        //}
-
         [Test]
         public void WhenNobodyIsCloseAndShieldIsLow_RechargeTheShield()
         {
             Mock.Get(myOwnBot).Setup(x => x.DistanceTo(myEnemyOne)).Returns(30);
+            SetShieldPercentageAndActualShieldPoints(ShieldTooDamagedPercentage);
+            //act
+            var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
+            //verify
+            Assert.That(result, Is.InstanceOf(TurnAction.Recharge.Shield(It.IsAny<int>()).GetType()),
+                $"When nobody is close and shield percentage is as low as {ShieldTooDamagedPercentage}, " +
+                "Recharge Shield action must be returned.");
         }
 
         private void SetBatteryPercentage(IOwnBot ownBot, int batteryPercentage)
@@ -167,21 +166,16 @@ namespace CodingArena.Miso.Tests
         private static IShield CreateAndSetupShield()
         {
             var shield = new Mock<IShield>().Object;
-            Mock.Get(shield).Setup(x => x.Percent).Returns(100);
             Mock.Get(shield).Setup(x => x.Maximum).Returns(MaximumShield);
+            Mock.Get(shield).Setup(x => x.Percent).Returns(100);
             Mock.Get(shield).Setup(x => x.Actual).Returns(MaximumShield);
             return shield;
         }
 
-        private void SetShieldPercentage(IShield shield, int shieldPercentage)
+        private static void SetShieldPercentageAndActualShieldPoints(int shieldPercentage)
         {
-            Mock.Get(shield).Setup(x => x.Percent).Returns(shieldPercentage);
-            Mock.Get(shield).Setup(x => x.Actual).Returns(MaximumShield * shieldPercentage / 100);
-        }
-
-        private void SetShieldActual(IShield shield, int actualShieldPoints)
-        {
-            Mock.Get(shield).Setup(x => x.Actual).Returns(actualShieldPoints);
+            Mock.Get(myShield).Setup(x => x.Percent).Returns(shieldPercentage);
+            Mock.Get(myShield).Setup(x => x.Actual).Returns(shieldPercentage * MaximumShield / 100);
         }
 
         private static IEnergy CreateAndSetupEnergy()
