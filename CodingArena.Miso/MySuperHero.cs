@@ -9,17 +9,21 @@ namespace CodingArena.Miso
 {
     public class MySuperHero : IBotAI
     {
-        public string BotName => "Miso";
-        public Model Model => Model.Rust;
         private IOwnBot myOwnBot;
+        private IEnemy myClosestEnemy;
         private const int BatteryLowPercentage = 20;
         private const int ShieldDamagedPercentage = 10;
         private int myLastShieldPercent = 100;
         private int myLastHealthPercent = 100;
-        private int batteryNotFullPercentage = 95;
-        private IEnemy myClosestEnemy;
-        private int shieldNotFullPercentage = 99;
+        private const int ShieldSeriouslyDamagedPercentage = 10;
+        private const int BatteryNotFullPercentage = 90;
+        private const int ShieldNotFullPercentage = 60;
+        private const int SeriouslyInjuredPercentage = 30;
         private const int SafeDistanceFromEnemy = 5;
+
+        public string BotName => "Miso";
+
+        public Model Model => Model.Rust;
 
         public ITurnAction GetTurnAction(IOwnBot ownBot, IReadOnlyCollection<IEnemy> enemies, IBattlefieldView battlefield)
         {
@@ -36,12 +40,12 @@ namespace CodingArena.Miso
             }
             if (IsInSafeDistanceFromEnemies(SafeDistanceFromEnemy))
             {
-                if (ShieldNotFullEnough(ownBot, shieldNotFullPercentage))
+                if (ShieldNotFullEnough(ownBot, ShieldNotFullPercentage))
                 {
                     UpdateCurrentShieldAndHealth(ownBot);
                     return RechargeTheShieldToMaximum(ownBot);
                 }
-                if (BatteryNotFullEnough(ownBot, batteryNotFullPercentage))
+                if (BatteryNotFullEnough(ownBot, BatteryNotFullPercentage))
                 {
                     UpdateCurrentShieldAndHealth(ownBot);
                     return RechargeTheBattery();
@@ -54,7 +58,7 @@ namespace CodingArena.Miso
             }
             if (IsUnderAttack(ownBot) 
                 && IsNotInCornerOrEdge(battlefield, ownBot) 
-                && (IsSeriouslyInjured(ownBot) || IsShieldSeriouslyDamaged(ownBot)))
+                && (IsSeriouslyInjured(ownBot, SeriouslyInjuredPercentage) || IsShieldSeriouslyDamaged(ownBot)))
             {
                 UpdateCurrentShieldAndHealth(ownBot);
                 return RunAwayFromEnemy(myClosestEnemy);
@@ -159,13 +163,13 @@ namespace CodingArena.Miso
         }
 
         private bool IsShieldSeriouslyDamaged(IOwnBot ownBot)
-        {
-            return ownBot.Shield.Percent < 10;
+        {            
+            return ownBot.Shield.Percent < ShieldSeriouslyDamagedPercentage;
         }
 
-        private bool IsSeriouslyInjured(IOwnBot ownBot)
+        private bool IsSeriouslyInjured(IOwnBot ownBot, int seriouslyInjuredPercentage)
         {
-            return ownBot.Health.Percent < 30;
+            return ownBot.Health.Percent < seriouslyInjuredPercentage;
         }
 
         private ITurnAction RunAwayFromEnemy(IEnemy enemy)

@@ -20,7 +20,7 @@ namespace CodingArena.Miso.Tests
         private static IBattlefieldPlace myPosition;
         private IReadOnlyCollection<IEnemy> enemiesCollection;
         private const int ShieldTooDamagedPercentage = 9;
-        private const int ShieldNotOkPercentage = 90;
+        private const int ShieldNotFullPercentage = 59;
         private const int BatteryLowPercentage = 19;
         private const int BatteryOkPercentage = 20;
         private const int MaximumEnergy = 500;
@@ -140,12 +140,12 @@ namespace CodingArena.Miso.Tests
         public void WhenNobodyIsCloseAndShieldIsNotOk_RechargeTheShield()
         {
             Mock.Get(myOwnBot).Setup(x => x.DistanceTo(myEnemyOne)).Returns(30);
-            SetShieldPercentageAndActualShieldPoints(ShieldNotOkPercentage);
+            SetShieldPercentageAndActualShieldPoints(ShieldNotFullPercentage);
             //act
             var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
             //verify
             Assert.That(result, Is.InstanceOf(TurnAction.Recharge.Shield(It.IsAny<int>()).GetType()),
-                $"When nobody is close and shield percentage is as low as {ShieldNotOkPercentage}, " +
+                $"When nobody is close and shield percentage is as low as {ShieldNotFullPercentage}, " +
                 "Recharge Shield action must be returned.");
         }
 
