@@ -10,6 +10,7 @@ namespace CodingArena.Miso
     public class MySuperHero : IBotAI
     {
         public string BotName => "Miso";
+        public Model Model => Model.Rust;
         private IOwnBot myOwnBot;
         private const int BatteryLowPercentage = 20;
         private const int ShieldDamagedPercentage = 10;
