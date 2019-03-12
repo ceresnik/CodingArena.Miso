@@ -1,4 +1,5 @@
-﻿using CodingArena.Player;
+﻿using System;
+using CodingArena.Player;
 using CodingArena.Player.Battlefield;
 using CodingArena.Player.TurnActions;
 using Moq;
@@ -14,31 +15,44 @@ namespace CodingArena.Miso.Tests
         private IOwnBot myOwnBot;
         private IEnemy myEnemyOne;
         private IBattlefieldView myBattleField;
-        private static IShield myShield;
-        private static IHealth myHealth;
-        private static IEnergy myEnergy;
-        private static IBattlefieldPlace myPosition;
+        private IShield myShield;
+        private IHealth myHealth;
+        private IEnergy myEnergy;
         private IReadOnlyCollection<IEnemy> enemiesCollection;
+        private const int OwnBotInitialPositionX = 25;
+        private const int OwnBotInitialPositionY = 25;
+        private const int EnemyOneInitialPositionX = 0;
+        private const int EnemyOneInitialPositionY = 5;
+        private const int HealthTooLowPercentage = 40;
         private const int ShieldTooDamagedPercentage = 9;
         private const int ShieldNotFullPercentage = 59;
-        private const int BatteryLowPercentage = 19;
+        private const int BatteryNotFullPercentage = 90;
+        private const int BatteryLowPercentage = 9;
         private const int BatteryOkPercentage = 20;
-        private const int MaximumEnergy = 500;
+        private const int MaximumHealth = 500;
         private const int MaximumShield = 200;
+        private const int MaximumEnergy = 500;
 
         [SetUp]
         public void SetUp()
         {
             sut = new MySuperHero();
             myShield = CreateAndSetupShield();
+            SetShieldPercentageAndActualShieldPoints(100);
             myHealth = CreateAndSetupHealth();
             myEnergy = CreateAndSetupEnergy();
-            myPosition = CreateAndSetupPosition();
-            myOwnBot = CreateAndSetupOwnBot();
-            myEnemyOne = CreateAndSetupEnemy(0, 5);
-            CreateAndSetupEnemy(45, 45);
+            myOwnBot = CreateAndSetupOwnBot(OwnBotInitialPositionX, OwnBotInitialPositionY);
+            myEnemyOne = CreateAndSetupEnemy(EnemyOneInitialPositionX, EnemyOneInitialPositionY);
+            SetDistanceToEnemy(myEnemyOne);
             myBattleField = new Mock<IBattlefieldView>().Object;
             enemiesCollection = new List<IEnemy> {myEnemyOne};
+        }
+
+        private void SetDistanceToEnemy(IEnemy enemy)
+        {
+            double distanceToEnemy = Math.Sqrt(Math.Pow(myOwnBot.Position.X - EnemyOneInitialPositionX, 2) 
+                                               + Math.Pow(myOwnBot.Position.Y - EnemyOneInitialPositionY, 2));
+            Mock.Get(myOwnBot).Setup(x => x.DistanceTo(enemy)).Returns(distanceToEnemy);
         }
 
         [TearDown]
@@ -47,7 +61,6 @@ namespace CodingArena.Miso.Tests
             myShield = null;
             myHealth = null;
             myEnergy = null;
-            myPosition = null;
             myOwnBot = null;
             myEnemyOne = null;
             myBattleField = null;
@@ -100,17 +113,6 @@ namespace CodingArena.Miso.Tests
         }
 
         [Test]
-        public void WhenBatteryIsNotLow_BatteryIsNotRecharged()
-        {
-            SetBatteryPercentageAndActualEnergyPoints(BatteryOkPercentage);
-            //act
-            var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
-            //verify
-            Assert.That(result, Is.Not.InstanceOf(TurnAction.Recharge.Battery().GetType()),
-                $"When battery percentage is as high as {BatteryOkPercentage}, Recharge battery action must not be returned.");
-        }
-
-        [Test]
         public void WhenShieldIsTooDamaged_RechargeTheShieldToMax()
         {
             SetShieldPercentageAndActualShieldPoints(ShieldTooDamagedPercentage);
@@ -124,22 +126,25 @@ namespace CodingArena.Miso.Tests
         }
 
         [Test]
-        public void WhenShieldIsTooDamagedAndNotEnoughBattery_RechargeTheBattery()
+        public void WhenUnderAttackAndShieldIsTooDamagedAndNotEnoughBattery_RunAwayFromEnemy()
         {
+            Mock.Get(myOwnBot).Setup(x => x.Position)
+                .Returns(CreateAndSetupPosition(EnemyOneInitialPositionX + 1, EnemyOneInitialPositionY + 1));
+            SetDistanceToEnemy(myEnemyOne);
             SetShieldPercentageAndActualShieldPoints(ShieldTooDamagedPercentage);
             SetBatteryPercentageAndActualEnergyPoints(BatteryLowPercentage);
             //act
             var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
             //verify
-            Assert.That(result, Is.InstanceOf(TurnAction.Recharge.Battery().GetType()),
-                $"When shield percentage is as low as {ShieldTooDamagedPercentage} and battery as low as {BatteryLowPercentage}, " +
-                "Recharge battery action must be returned.");
+            Assert.That(result, Is.InstanceOf(TurnAction.Move.AwayFrom(new Mock<IBattlefieldPlace>().Object).GetType()),
+                $"When under attack and shield percentage is as low as {ShieldTooDamagedPercentage} " +
+                $"and battery is as low as {BatteryLowPercentage}, " +
+                "Run away from enemy action must be returned.");
         }
 
         [Test]
         public void WhenNobodyIsCloseAndShieldIsNotOk_RechargeTheShield()
         {
-            Mock.Get(myOwnBot).Setup(x => x.DistanceTo(myEnemyOne)).Returns(30);
             SetShieldPercentageAndActualShieldPoints(ShieldNotFullPercentage);
             //act
             var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
@@ -149,13 +154,38 @@ namespace CodingArena.Miso.Tests
                 "Recharge Shield action must be returned.");
         }
 
-        private static IOwnBot CreateAndSetupOwnBot()
+        [Test]
+        public void WhenNobodyIsCloseAndBatteryIsNotOk_BatteryIsRecharged()
+        {
+            SetBatteryPercentageAndActualEnergyPoints(BatteryNotFullPercentage);
+            //act
+            var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
+            //verify
+            Assert.That(result, Is.InstanceOf(TurnAction.Recharge.Battery().GetType()),
+                $"When nobody is close and battery percentage is as low as {BatteryNotFullPercentage}, " +
+                "Recharge battery action must be returned.");
+        }
+
+        [Test]
+        public void WhenIsVeryMuchInjuredAndShieldIsDamaged_RechargeTheShield()
+        {
+            SetShieldPercentageAndActualShieldPoints(ShieldTooDamagedPercentage);
+            SetHealthPercentageAndActualHealthPoints(HealthTooLowPercentage);
+            //act
+            var result = sut.GetTurnAction(myOwnBot, enemiesCollection, myBattleField);
+            //verify
+            Assert.That(result, Is.InstanceOf(TurnAction.Recharge.Shield(It.IsAny<int>()).GetType()),
+                $"When health percentage is as low as {HealthTooLowPercentage} and shield percentage is as low as " +
+                $"{ShieldTooDamagedPercentage}, Recharge Shield action must be returned.");
+        }
+
+        private IOwnBot CreateAndSetupOwnBot(int positionX, int positionY)
         {
             var ownBot = new Mock<IOwnBot>().Object;
             Mock.Get(ownBot).Setup(x => x.Health).Returns(myHealth);
             Mock.Get(ownBot).Setup(x => x.Shield).Returns(myShield);
             Mock.Get(ownBot).Setup(x => x.Energy).Returns(myEnergy);
-            Mock.Get(ownBot).Setup(x => x.Position).Returns(myPosition);
+            Mock.Get(ownBot).Setup(x => x.Position).Returns(CreateAndSetupPosition(positionX, positionY));
             return ownBot;
         }
 
@@ -170,20 +200,24 @@ namespace CodingArena.Miso.Tests
         {
             var shield = new Mock<IShield>().Object;
             Mock.Get(shield).Setup(x => x.Maximum).Returns(MaximumShield);
-            Mock.Get(shield).Setup(x => x.Percent).Returns(100);
-            Mock.Get(shield).Setup(x => x.Actual).Returns(MaximumShield);
             return shield;
         }
 
-        private IBattlefieldPlace CreateAndSetupPosition()
+        private IBattlefieldPlace CreateAndSetupPosition(int positionX, int positionY)
         {
             var mPosition = new Mock<IBattlefieldPlace>().Object;
-            Mock.Get(mPosition).Setup(x => x.X).Returns(25);
-            Mock.Get(mPosition).Setup(x => x.Y).Returns(25);
+            Mock.Get(mPosition).Setup(x => x.X).Returns(positionX);
+            Mock.Get(mPosition).Setup(x => x.Y).Returns(positionY);
             return mPosition;
         }
 
-        private static void SetShieldPercentageAndActualShieldPoints(int shieldPercentage)
+        private void SetHealthPercentageAndActualHealthPoints(int healthTooLowPercentage)
+        {
+            Mock.Get(myHealth).Setup(x => x.Percent).Returns(healthTooLowPercentage);
+            Mock.Get(myHealth).Setup(x => x.Actual).Returns(healthTooLowPercentage * MaximumHealth / 100);
+        }
+
+        private void SetShieldPercentageAndActualShieldPoints(int shieldPercentage)
         {
             Mock.Get(myShield).Setup(x => x.Percent).Returns(shieldPercentage);
             Mock.Get(myShield).Setup(x => x.Actual).Returns(shieldPercentage * MaximumShield / 100);
