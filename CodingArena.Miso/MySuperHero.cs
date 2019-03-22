@@ -19,7 +19,7 @@ namespace CodingArena.Miso
         private const int ShieldSeriouslyDamagedPercentage = 10;
         private const int BatteryNotFullPercentage = 90;
         private const int ShieldNotFullPercentage = 60;
-        private const int SeriouslyInjuredPercentage = 30;
+        private const int SeriouslyInjuredPercentage = 10;
         private const int SafeDistanceFromEnemy = 5;
 
         public string BotName => "Miso";
